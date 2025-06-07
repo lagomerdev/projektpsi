@@ -9,56 +9,48 @@ library(ggplot2)
 library(ggthemes)
 library(tidyverse)
 library(syuzhet)
+library(wordcloud)
+library(RColorBrewer)
+library(stopwords)
 
-
-
-# Jeden cały plik ----
-
-# Wczytanie danych tekstowych
-# Odczytanie lokalnego pliku .txt
-text <- readLines('nazwa sciezki do dokumentu txt kandydata', encoding="UTF-8")
-
-
-
-# Podział tekstu na równe segmenty o ustalonej długości ----
-
-
-# Usunięcie pustych wierszy
+# 1. Wczytaj i przygotuj tekst
+text <- readLines('nazwa_sciezki_do_pliku_txt', encoding = "UTF-8")
 non_empty_lines <- text[nzchar(text)]
-
-
-# Połączenie wszystkich wierszy w jeden ciąg znaków
 full_text <- paste(non_empty_lines, collapse = " ")
-
-# Usunięcie zbędnych spacji
 full_text <- gsub("\\s+", " ", full_text)
 
-# Funkcja do dzielenia tekstu na segmenty o określonej długości
+# 2. Podziel na segmenty do analizy sentymentu
 split_text_into_chunks <- function(text, chunk_size) {
   start_positions <- seq(1, nchar(text), by = chunk_size)
-  chunks <- substring(text, start_positions, start_positions + chunk_size - 1)
-  return(chunks)
+  substring(text, start_positions, start_positions + chunk_size - 1)
 }
-
-# Podzielenie tekstu na segmenty
-#
-# ustaw min_lentgh jako jednolitą długość jednego segmentu
 min_length <- 50
 text_chunks <- split_text_into_chunks(full_text, min_length)
 
-
-# Wyświetlenie wynikowych segmentów
-# print(text_chunks)
-
-
-
-# Analiza sentymentu przy użyciu pakietu SentimentAnalysis ----
+# 3. Analiza sentymentu
 sentiment <- analyzeSentiment(text_chunks)
+plot(sentiment$SentimentGI, type = "l", main = "Poziom sentymentu", ylab = "Wartość sentymentu")
 
+# 4. Chmura słów — przetwarzanie pełnego tekstu
+library(wordcloud)
+library(RColorBrewer)
 
-# odkomentuj i zobacz parametry funkcji:
-# ?analyzeSentiment
+words <- unlist(strsplit(tolower(full_text), "\\W+"))
+words <- words[!words %in% c(stopwords("en"), "$","poland","polish","also","mr","poles","president","however","namely", "thing","yes","like","well")]
+words <- words[nchar(words) > 1]
 
+# Funkcja częstości
+word_frequency <- function(words) {
+  freq <- table(words)
+  freq_df <- data.frame(word = names(freq), freq = as.numeric(freq))
+  freq_df <- freq_df[order(-freq_df$freq), ]
+  return(freq_df)
+}
+freq_df <- word_frequency(words)
+
+# Rysuj chmurę
+wordcloud(words = freq_df$word, freq = freq_df$freq, min.freq = 8,
+          colors = brewer.pal(8, "Dark2"))
 
 
 
